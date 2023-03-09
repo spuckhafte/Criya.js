@@ -1,4 +1,4 @@
-class Jsimp {
+class JSimp {
     constructor(init, prop, events, attr) {
         this.init = init; // { type, parent, class("class1 class2"), id }
         this.prop = prop; // { text, html, css, value }
