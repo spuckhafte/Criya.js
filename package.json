@@ -1,0 +1,23 @@
+{
+  "name": "tsimp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spuckhafte/JSimp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/spuckhafte/JSimp/issues"
+  },
+  "homepage": "https://github.com/spuckhafte/JSimp#readme"
+}

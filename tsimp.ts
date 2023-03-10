@@ -1,6 +1,6 @@
-import { Attributes, Effects, Events, Init, Prop, States, Subscribers } from "./jsimp.types";
+import { Attributes, Effects, Events, Init, Prop, States, Subscribers } from "./tsimp.types";
 
-class JSimp {
+class TSimp {
 
     /**Initialize the element by defining its type, parent(query-selector), classes and id*/
     init:Init; 
@@ -15,7 +15,7 @@ class JSimp {
     /**The state object, contains all the states and their current values */
     states:States; pseudoStates:States; 
     /**List of all the subscribers and the states they are subscribed to */
-    subscribers:Subscribers<JSimp>;
+    subscribers:Subscribers<TSimp>;
     
     private onmount:CallableFunction|undefined; private onunmount:CallableFunction|undefined;
     private onsubscribed: CallableFunction|undefined; private onnewsubscriber: CallableFunction|undefined;
@@ -142,7 +142,7 @@ class JSimp {
      * @param forStates - array of states this element will listen to, leave it empty to trigger all
      * @param render - re-render the element when subscription is added, by default: `false`
     */
-    subscribe(subscribeTo:JSimp, forStates:string[], render = false) {
+    subscribe(subscribeTo:TSimp, forStates:string[], render = false) {
         forStates = forStates.length == 0
             ? Object.keys(subscribeTo.states)
             : forStates.filter(state => subscribeTo.states[state] != undefined);
@@ -272,4 +272,4 @@ class JSimp {
     }
 }
 
-export default JSimp;
+export default TSimp;
