@@ -12,7 +12,7 @@ export type Prop = {
 } | undefined
 
 export type Events = {
-    [index in AllEvents]: EventListenerOrEventListenerObject
+    [index in AllEvents]?: EventListenerOrEventListenerObject
 } | undefined
 
 export type Attributes = {
