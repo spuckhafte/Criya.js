@@ -184,6 +184,25 @@ class TSimp {
         if (renderThis) this.render();
     }
 
+    /**Get access to the states of other elements by subscribing for them 
+     * @param subscribeTo - the element who's state will be accessed
+     * @param forStates - array of states this element will listen to, leave it empty to trigger all
+     * @param render - re-render the element when subscription is added, by default: `false`
+    */
+    subscribe(subscribeTo:TSimp, forStates:string[], render = false) {
+        forStates = forStates.length == 0
+            ? Object.keys(subscribeTo.states)
+            : forStates.filter(state => subscribeTo.states[state] != undefined);
+
+        for (let state of forStates) {
+            this.pseudoStates[state] = subscribeTo.states[state];
+        }
+        subscribeTo.subscribers.push({ subscriber: this, states: forStates });
+        if (subscribeTo.onnewsubscriber) subscribeTo.onnewsubscriber();
+        if (this.onsubscribed) this.onsubscribed();
+        if (render) subscribeTo.render();
+    }
+
     /**States are internal variables that when change automatically update their special references in some specific properties, i.e., `html, text, css, value, class, id` 
      * @param stateName - name of the state
      * @param initialValue - initial value of the state
