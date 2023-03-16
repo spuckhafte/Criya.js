@@ -19,7 +19,7 @@ class TSimp {
     
     private onmount:CallableFunction|undefined; private onunmount:CallableFunction|undefined;
     private onsubscribed: CallableFunction|undefined; private onnewsubscriber: CallableFunction|undefined;
-    private effects:Effects;
+    private effects:Effects; private renderCondition:(() => boolean);
 
     constructor(init:Init, prop?:Prop, events?:Events, attr?:Attributes) {
         this.init = init; // { type, parent, class("class1 class2"), id }
@@ -30,6 +30,7 @@ class TSimp {
         this.pseudoStates = {}; // --dito--
         this.subscribers = []; // [ { subscriber: El, states: [] } ]
         this.effects = []; // [ { func(), deps[], ranOnce:false, onFirst:boolean, currentStates[] } ]
+        this.renderCondition = () => true; // by default no condition
     }
 
     // dom methods:
@@ -68,7 +69,7 @@ class TSimp {
 
             if (text) this.domElement.innerText = this.stateExtracter(text);
             if (html) this.domElement.innerHTML = this.stateExtracter(html);
-            if (value) this.domElement.setAttribute('value', value);
+            if (value) this.domElement.setAttribute('value', this.stateExtracter(value));
         }
 
         if (this.effects) {
@@ -104,15 +105,36 @@ class TSimp {
             });
         }
     }
+
     /**Append the element to the DOM */
     mount() {
-        if (this.onmount) this.onmount();
-        let parent = document.querySelector(this.init.parent);
-        if (!parent) throw Error(`DOMElement of query: ${this.init.parent} doesn't exist`);
+        if (this.renderCondition() && this.isMount()) return this;
 
-        if (this.domElement) parent.appendChild(this.domElement);
+        if (this.renderCondition()) if (this.onmount) this.onmount();
+        let parent = document.querySelector(this.init.parent);
+
+        if (!parent) throw Error(`DOMElement of query: ${this.init.parent} doesn't exist :(`);
+        if (!this.domElement) throw Error('No DOMElement attached :(');
+
+        if (typeof this.getState('__position__') !== 'number')
+            this.state('__position__', parent.childNodes.length);
+        
+        if (!this.renderCondition()) {
+            if (this.isMount()) {
+                this.state('__position__', Array.from(parent.children).indexOf(this.domElement));
+                this.unMount();
+            }
+            return;
+        }
+        if (this.getState('__stick__')) {
+            let position = +this.getState('__position__');
+            if (position >= parent.childNodes.length) this._directMount(parent);
+            else parent.insertBefore(this.domElement, parent.children.item(position));
+        } else this._directMount(parent);
+        
         return this;
     }
+
     /**Remove the element from the DOM */
     unMount() {
         if (this.onunmount) this.onunmount();
@@ -121,14 +143,20 @@ class TSimp {
 
         if (this.domElement) parent.removeChild(this.domElement);
     }
+
+    private _directMount(parent:Element) {
+        if (this.domElement) parent.appendChild(this.domElement);
+    }
+
     /**Check if this element is in the DOM */
     isMount() {
         let parent = document.querySelector(this.init.parent);
         if (!parent) throw Error(`DOMElement of query: ${this.init.parent} doesn't exist`);
+        if (!this.domElement) throw Error('No DOMElement attached :(');
 
-        let el = parent.querySelector(`${this.init.id}`);
-        return !!el;
+        return Array.from(parent.children).indexOf(this.domElement) > -1;
     }
+
     /**Combines render and mount methods and returns the element */
     make() {
         this.render();
@@ -137,29 +165,30 @@ class TSimp {
 
     // out-of-the-box-feature methods
 
-    /**Get access to the states of other elements by subscribing for them 
-     * @param subscribeTo - the element who's state will be accessed
-     * @param forStates - array of states this element will listen to, leave it empty to trigger all
+    /**Make other elements subscribe to this one so that they can listen to its states
+     * @param by - the element that is subscribing
+     * @param forStates - array of states the "by" element will listen to, leave it empty to trigger all
      * @param render - re-render the element when subscription is added, by default: `false`
     */
-    subscribe(subscribeTo:TSimp, forStates:string[], render = false) {
+    gettingSubscribed(by:TSimp, forStates:string[], renderThis = false) {
         forStates = forStates.length == 0
-            ? Object.keys(subscribeTo.states)
-            : forStates.filter(state => subscribeTo.states[state] != undefined);
+            ? Object.keys(this.states)
+            : forStates.filter(state => this.states[state] != undefined);
 
         for (let state of forStates) {
-            this.pseudoStates[state] = subscribeTo.states[state];
+            by.pseudoStates[state] = this.states[state];
         }
-        subscribeTo.subscribers.push({ subscriber: this, states: forStates });
-        if (subscribeTo.onnewsubscriber) subscribeTo.onnewsubscriber();
-        if (this.onsubscribed) this.onsubscribed();
-        if (render) subscribeTo.render();
+        this.subscribers.push({ subscriber: by, states: forStates });
+        if (this.onnewsubscriber) this.onnewsubscriber();
+        if (by.onsubscribed) by.onsubscribed();
+        if (renderThis) this.render();
     }
 
     /**States are internal variables that when change automatically update their special references in some specific properties, i.e., `html, text, css, value, class, id` 
      * @param stateName - name of the state
      * @param initialValue - initial value of the state
-     * @returns Two functions in an array, one to get state (non reactive) another to set state*/
+     * @returns Two functions in an array, one to get state (non reactive) another to set state
+    */
     state<T>(stateName:string, initialValue:T):[(() => T), ((newVal: T) => void)] {
         const isObject = typeof initialValue == 'object';
         //@ts-ignore
@@ -170,7 +199,7 @@ class TSimp {
         const setState = (newVal:any) => {
             if (typeof newVal == 'object') newVal = JSON.stringify(newVal);
             this.state(stateName, newVal);
-            this.render();
+            this.make();
             const validSubs = this.subscribers.filter(sub => sub.states.includes(stateName));
             validSubs.forEach(sub => {
                 sub.subscriber.pseudoStates[stateName] = newVal;
@@ -192,7 +221,8 @@ class TSimp {
      * - `['$count$', '%color%']`
      * - `['f']`
      * - `['e']`
-     * @param onFirst - `default: true`, by default every effect runs on its first render whether the deps change or not.*/
+     * @param onFirst - `default: true`, by default every effect runs on its first render whether the deps change or not.
+     * */
     effect(func:CallableFunction, dependencyArray:string[], onFirst = true) {
         if (dependencyArray[0] == 'f' || dependencyArray[0] == 'e') {
             this.effects.push({
@@ -211,9 +241,24 @@ class TSimp {
         });
     }
 
+    /**Define a condition for when an element should be in the DOM 
+     * @param condition - function or a text condition that'll return boolean signifying mount or not, eg:
+     * - Function - `putIf(() => state() > 2)`
+     * - Text - `putIf('$state$ > 2')`
+     * - Conditions can include pseudo-states also
+     * @param stick - if true, the element will be in its position after remounting. Bydefault: `false`
+     * @returns a [getter and setter] (just like `.state` does) for the "sticky" state
+    */
+    putIf(condition:((() => boolean)|string), stick=false) {
+        if (typeof condition == 'string') {
+            this.renderCondition = () => eval(this.stateExtracter(condition));
+        } else this.renderCondition = condition;
+        return this.state('__stick__', stick)
+    }
+
     // inbuilt events
     /**Called when the element is added to the dom */
-    onMount(func:CallableFunction) {
+    onMount(func:((didMount?:boolean) => void)) {
         this.onmount = func;
     }
     /**Called when the element is removed from the dom */
@@ -229,18 +274,55 @@ class TSimp {
         this.onsubscribed = func;
     }
 
+    /**Clone an element to avoid repetition.
+     * @param vary - shortcut for changing some specific properties: [id, class, parent, text, html, value]
+     * @param copy - also copy these properties: [states, subscribers (includes pseudoStates)], byDefault: false
+     */
+    clone(
+        vary?:{ id?:string, class?:string, parent?:string, text?:string, html?:string, value?:string },
+        copy?: { states?:boolean, subscribers?:boolean }
+    ) {
+        const _prop = { ...this.prop };
+        const _init = { ...this.init };
+        if (vary) {
+            if (vary.text) _prop.text = vary.text;
+            if (vary.html) _prop.html = vary.html;
+            if (vary.value) _prop.value = vary.value;
+            if (vary.id) _init.id = vary.id;
+            if (vary.class) _init.class = vary.class;
+            if (vary.parent) _init.parent = vary.parent;
+        }
+        const clonedElement = new TSimp(
+            _init,
+            _prop, 
+            { ...this.events },
+            { ...this.attr }
+        );
+        if (copy) {
+            if (copy.states) clonedElement.states = { ...this.states };
+            if (copy.subscribers) {
+                let _subs:Subscribers<TSimp> = []
+                for (let sub of this.subscribers) {
+                    _subs.push({ 
+                        states: sub.states ? [ ...sub.states ] : [],
+                        subscriber: sub.subscriber
+                    });
+                }
+
+                clonedElement.pseudoStates = { ...this.pseudoStates };
+                clonedElement.subscribers = _subs;
+            }
+        }
+        clonedElement.domElement = undefined;
+        return clonedElement;
+    }
+
     // util methods
-    private get getStateObject() {
-        return this.states
-    }
-    private get getPStateObject() {
-        return this.pseudoStates;
-    }
     private getState(stateName:string) {
-        return this.getStateObject[stateName];
+        return this.states[stateName];
     }
     private getPState(stateName:string) {
-        return this.getPStateObject[stateName];
+        return this.states[stateName];
     }
     private stateExtracter(text:string) {
         const regxState = /\$[a-zA-Z0-9-]+\$/g;
