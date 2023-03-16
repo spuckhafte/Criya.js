@@ -294,7 +294,7 @@ class TSimp {
     }
 
     // util methods
-    public getState(stateName:string) {
+    private getState(stateName:string) {
         return this.states[stateName];
     }
     private getPState(stateName:string) {

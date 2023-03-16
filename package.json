@@ -2,7 +2,7 @@
   "name": "tsimp",
   "version": "1.1.0",
   "description": "",
-  "main": "tsimp.ts",
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/spuckhafte/JSimp.git"
