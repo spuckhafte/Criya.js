@@ -5,14 +5,17 @@ export type Init = {
     id?: string
 }
 
+export type Css = Partial<CSSStyleDeclaration>
+
 export type Prop = {
-    html?: string | undefined,
-    text?: string | undefined,
-    value?: string | undefined
+    html?: string,
+    text?: string,
+    value?: string,
+    css?: Css
 } | undefined
 
 export type Events = {
-    [index in AllEvents]?: EventListenerOrEventListenerObject
+    [index in keyOf<HTMLElementEventMap>]?: EventListenerOrEventListenerObject
 } | undefined
 
 export type Attributes = {
@@ -40,4 +43,4 @@ export type AnEffect = {
 
 export type Effects = AnEffect[]
 
-export type AllEvents = keyof HTMLElementEventMap;
+type keyOf<T> = keyof T;

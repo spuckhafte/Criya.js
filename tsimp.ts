@@ -66,6 +66,14 @@ class TSimp {
             const text = this.prop.text;
             const html = this.prop.html;
             const value = this.prop.value;
+            const css = this.prop.css;
+
+            if (this.prop.css) {
+                for (let property of Object.keys(this.prop.css)) {
+                    //@ts-ignore
+                    this.domElement.style[property] = this.stateExtracter(css[property]);
+                }
+            }
 
             if (text) this.domElement.innerText = this.stateExtracter(text);
             if (html) this.domElement.innerHTML = this.stateExtracter(html);
@@ -164,43 +172,22 @@ class TSimp {
     }
 
     // out-of-the-box-feature methods
-
-    /**Make other elements subscribe to this one so that they can listen to its states
-     * @param by - the element that is subscribing
-     * @param forStates - array of states the "by" element will listen to, leave it empty to trigger all
-     * @param render - re-render the element when subscription is added, by default: `false`
+    /**Make an element subscribe to the other so that it can access its states as pseudo-states.
+     * @param subscriber - the element which will access the states by subscribing to other.
+     * @param main - the element that'll share its states.
+     * @param forStates - States of the `main` element to be shared, leave the array empty to trigger all.
     */
-    gettingSubscribed(by:TSimp, forStates:string[], renderThis = false) {
+    static subscribe(subscriber:TSimp, main:TSimp, forStates:string[]) {
         forStates = forStates.length == 0
-            ? Object.keys(this.states)
-            : forStates.filter(state => this.states[state] != undefined);
+            ? Object.keys(main.states)
+            : forStates.filter(state => main.states[state] != undefined);
 
         for (let state of forStates) {
-            by.pseudoStates[state] = this.states[state];
+            subscriber.pseudoStates[state] = main.states[state];
         }
-        this.subscribers.push({ subscriber: by, states: forStates });
-        if (this.onnewsubscriber) this.onnewsubscriber();
-        if (by.onsubscribed) by.onsubscribed();
-        if (renderThis) this.render();
-    }
-
-    /**Get access to the states of other elements by subscribing for them 
-     * @param subscribeTo - the element who's state will be accessed
-     * @param forStates - array of states this element will listen to, leave it empty to trigger all
-     * @param render - re-render the element when subscription is added, by default: `false`
-    */
-    subscribe(subscribeTo:TSimp, forStates:string[], render = false) {
-        forStates = forStates.length == 0
-            ? Object.keys(subscribeTo.states)
-            : forStates.filter(state => subscribeTo.states[state] != undefined);
-
-        for (let state of forStates) {
-            this.pseudoStates[state] = subscribeTo.states[state];
-        }
-        subscribeTo.subscribers.push({ subscriber: this, states: forStates });
-        if (subscribeTo.onnewsubscriber) subscribeTo.onnewsubscriber();
-        if (this.onsubscribed) this.onsubscribed();
-        if (render) subscribeTo.render();
+        main.subscribers.push({ subscriber: subscriber, states: forStates });
+        if (main.onnewsubscriber) main.onnewsubscriber();
+        if (subscriber.onsubscribed) subscriber.onsubscribed();
     }
 
     /**States are internal variables that when change automatically update their special references in some specific properties, i.e., `html, text, css, value, class, id` 
@@ -298,36 +285,46 @@ class TSimp {
         return this.states[stateName];
     }
     private getPState(stateName:string) {
-        return this.states[stateName];
+        return this.pseudoStates[stateName];
     }
     private stateExtracter(text:string) {
-        const regxState = /\$[a-zA-Z0-9-]+\$/g;
+        const regxState = /\$[a-zA-Z0-9-\+\?\:\>\<\=\"\'\[\]\(\)\*\\ ]+\$/g;
         const stateNames = text.match(regxState);
         if (stateNames) {
             for (let stateRaw of stateNames) {
-                const state = stateRaw.replace(/\$/g, '');
+                let state = stateRaw.replace(/[\$\+\?\:\>\<\=0-9\"\'\[\]\(\)\*\\\-]/g, '');
+                state = state.split(' ')[0].trim();
                 if (typeof this.states[state] == null) continue;
-                text = text.replace(stateRaw, `${this.getState(state)}`);
+                const operatedStateValue = operate(this.states[state], stateRaw, state)
+                text = text.replace(stateRaw, `${operatedStateValue}`);
             }
         }
 
-        const regxPseudoState = /\%[a-zA-Z0-9-]+\%/g;
+        const regxPseudoState = /\%[a-zA-Z0-9-\+\?\:\>\<\=\"\'\[\]\(\)\*\\ ]+\%/g;
         const pseudoStateNames = text.match(regxPseudoState);
         if (pseudoStateNames) {
             for (let stateRaw of pseudoStateNames) {
-                const state = stateRaw.replace(/\%/g, '');
+                let state = stateRaw.replace(/[\%\+\?\:\>\<\=0-9\"\'\[\]\(\)\*\\\-]/g, '');
+                state = state.split(' ')[0].trim();
                 if (this.pseudoStates[state] == undefined) continue;
-                text = text.replace(stateRaw, `${this.getPState(state)}`);
+                const operatedStateValue = operate(this.pseudoStates[state], stateRaw, state);
+                text = text.replace(stateRaw, `${operatedStateValue}`);
             }
         }
 
         return text;
     }
     private checkIfIncludesState(text:string) {
-        const regx = /\$[a-zA-Z0-9-]+\$/g;
-        const regxP = /\%[a-zA-Z0-9-]+\%/g;
+        const regx = /\$[a-zA-Z0-9-\+\?\:\>\<\=\"\'\[\]\(\)\*\\ ]+\$/g;
+        const regxP = /\%[a-zA-Z0-9-\+\?\:\>\<\=\"\'\[\]\(\)\*\\ ]+\%/g;
         return regx.test(text) || regxP.test(text);
     }
 }
-
+const subscribe = TSimp.subscribe;
+export { TSimp, subscribe };
 export default TSimp;
+
+function operate(stateValue:string|boolean|number, rawState:string, stateName:string):string|boolean|number {
+    if (!/[\+\?\:\>\<\=\"\'\[\]\(\)\*\\ ]/g.test(rawState)) return stateValue;
+    return eval(rawState.replace(stateName, `${stateValue}`).replace(/[\%\$]/g, ''));
+}

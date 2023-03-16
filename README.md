@@ -12,7 +12,6 @@ Just like [SpuckJs](https://github.com/spuckhafte/spuckjs), but better and typed
   
 ## Features
 You can read [this](https://spuckjs.netlify.app/gettingstarted/) to get an idea of getting started, these are spuckjs docs but both the libraries are very similar.<br>
-You can't edit css in this library like you did in SpuckJs, it is recomended to use [Tailwind](https://www.npmjs.com/package/tailwindcss).<br>
 You'll be using a build tool and [Vite](https://www.npmjs.com/package/vite) is recomended.
 
 ### Initializing:
@@ -26,7 +25,12 @@ npm i tsimp
 import TSimp from 'tsimp';
 
 const element = new TSimp({ type: 'h1', parent: '#app', class: "heading", id: "head" });
-element.prop = { text: "Hello World" };
+element.prop = { 
+  text: "Hello World",
+  css: {
+    color: "blue"
+  }
+};
 element.attr = { title: "Heading" };
 element.make();
 ```
@@ -61,43 +65,73 @@ button.events = {
 button.make();
 ```
 `count()` in the event will always have the latest value of the state as that line of code will call the getter function again.
+<hr>
+
+### **NOTE**
+You can perform some elementary operations on states using `$` refernce inside text.
+Such as:
+```ts
+_.state('state', 0);
+
+// airthmetic
+_.prop = {
+  text: "$state + (5 - 2) * 10/2$" // 0+3*5 = 15 
+}
+
+// logics
+_.prop = {
+  text: "$state > 2 ? 'Good' : 'Bad'" // bad
+}
+```
+**You can't do a single operation on 2 states, like:**<br>
+```ts
+"$state1$ + $state2$"
+```
+**Important**:<br>
+1. Everything has to be done inside `$...$`.
+2. Actual state should touch the first dollar sign.
+3. This feature also works for pseudo-states (discussed below) that use `%` instead of `$`.
+```ts
+"$state + 2 $" // correct
+"$state > 2" // correct
+"2 + $state" // wrong
+"$ state + 2" // wrong
+```
+<hr>
 
 ## Sharing States
-Suppose another element wants to show the count of `element` in its text. For that, it will subscribe for element's state to access them.
+Suppose another element wants to show the count of `element` in its text. For that, it will subscribe for element's state to access them.<br>
+For this we use the static method of the class TSimp, i.e,<br>
+`subscribe`.
+```ts
+import TSimp from 'tsimp';
+Tsimp.subscribe();
+
+// or
+import TSimp, { subscribe } from 'tsimp';
+subscribe();
+```
 
 ```ts
+//top-level
+import TSimp, { subscribe } from 'tsimp';
+
 const para = new TSimp({ type: 'p', parent: '#app' });
-para.subscribe(element, []);
+subscribe(para, element, []);
 para.prop = { text: "Element's count is %count%" };
 para.make();
 ```
-`para` subscribed to the `element` for **all** its states.<br>
-`[]` => all states.<br>
-`['count', 'color']` => subscribing to specific states.
-
-After subscribing, the `count` state of the `element` became the **pseudoState** of `para`, and these states are referenced like this:<br>
-`%stateName%`.
-<hr>
-
-### NOTE:
-This can also be done by the `.gettingSubscribed()` method.<br>
-The only difference is where the methods are being called.<br>
-And this is done to provide readability.
-
-Like:
+Structure of subscribe method:
 ```ts
-para.subscribe(element, [])
-```
-This is called on the subscriber element and read as: <br>
-`"para is subscribing to element for all ([]) states"`
+subscribe(subscriber, main, forStates);
+/*
+  *subscriber- the element which will access the states.
 
-The other way is to call a method on the main element:
-```ts
-element.gettingSubscribed(para, [])
+  *main- the element that'll share its states.
+
+  *forStates- States of the `main` element to be shared, leave the array empty to trigger all
+*/
 ```
-This will be read as: <br>
-`"Element is getting subscribed by para for all states"`
-<hr>
 
 ### Subscription Events:
 `_.onSubscribed(func)`: Called on the subscriber element when subscription is added.<br>
@@ -115,7 +149,7 @@ Effects are functions that get called when some states or pseudoStates (dependen
 ['e'] (this will run the effect on every render)
 ```
 
-@param `onFirst` — default: true, by default every effect runs on its first render whether the deps change or not.
+*@param* `onFirst` — default: true, by default every effect runs on its first render whether the deps change or not.
 ```ts
 element.effect(func, dependencyArray, onFirst=true);
 ```
@@ -127,7 +161,7 @@ para.effect(() => {
 }, ['%count%']);
 ```
 
-## Conditional Mounting
+## Conditional Mount
 This feature allows you to show the element in the DOM only when the condition provided is satisfied.
 
 Continuing with the `para` example.<br>
@@ -144,7 +178,7 @@ para.effect(() => {
   console.log('Effect Ran')
 }, ['%count%']);
 
-// conditional mounting
+// conditional mount
 para.putIf(() => count() % 2 != 0);
 para.make();
 ```
