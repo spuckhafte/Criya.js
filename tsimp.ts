@@ -293,51 +293,8 @@ class TSimp {
         this.onsubscribed = func;
     }
 
-    /**Clone an element to avoid repetition.
-     * @param vary - shortcut for changing some specific properties: [id, class, parent, text, html, value]
-     * @param copy - also copy these properties: [states, subscribers (includes pseudoStates)], byDefault: false
-     */
-    clone(
-        vary?:{ id?:string, class?:string, parent?:string, text?:string, html?:string, value?:string },
-        copy?: { states?:boolean, subscribers?:boolean }
-    ) {
-        const _prop = { ...this.prop };
-        const _init = { ...this.init };
-        if (vary) {
-            if (vary.text) _prop.text = vary.text;
-            if (vary.html) _prop.html = vary.html;
-            if (vary.value) _prop.value = vary.value;
-            if (vary.id) _init.id = vary.id;
-            if (vary.class) _init.class = vary.class;
-            if (vary.parent) _init.parent = vary.parent;
-        }
-        const clonedElement = new TSimp(
-            _init,
-            _prop, 
-            { ...this.events },
-            { ...this.attr }
-        );
-        if (copy) {
-            if (copy.states) clonedElement.states = { ...this.states };
-            if (copy.subscribers) {
-                let _subs:Subscribers<TSimp> = []
-                for (let sub of this.subscribers) {
-                    _subs.push({ 
-                        states: sub.states ? [ ...sub.states ] : [],
-                        subscriber: sub.subscriber
-                    });
-                }
-
-                clonedElement.pseudoStates = { ...this.pseudoStates };
-                clonedElement.subscribers = _subs;
-            }
-        }
-        clonedElement.domElement = undefined;
-        return clonedElement;
-    }
-
     // util methods
-    private getState(stateName:string) {
+    public getState(stateName:string) {
         return this.states[stateName];
     }
     private getPState(stateName:string) {

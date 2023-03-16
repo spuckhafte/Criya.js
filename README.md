@@ -68,7 +68,7 @@ Suppose another element wants to show the count of `element` in its text. For th
 ```ts
 const para = new TSimp({ type: 'p', parent: '#app' });
 para.subscribe(element, []);
-para.prop = { text: "Element's count is %count% };
+para.prop = { text: "Element's count is %count%" };
 para.make();
 ```
 `para` subscribed to the `element` for **all** its states.<br>
@@ -77,6 +77,27 @@ para.make();
 
 After subscribing, the `count` state of the `element` became the **pseudoState** of `para`, and these states are referenced like this:<br>
 `%stateName%`.
+<hr>
+
+### NOTE:
+This can also be done by the `.gettingSubscribed()` method.<br>
+The only difference is where the methods are being called.<br>
+And this is done to provide readability.
+
+Like:
+```ts
+para.subscribe(element, [])
+```
+This is called on the subscriber element and read as: <br>
+`"para is subscribing to element for all ([]) states"`
+
+The other way is to call a method on the main element:
+```ts
+element.gettingSubscribed(para, [])
+```
+This will be read as: <br>
+`"Element is getting subscribed by para for all states"`
+<hr>
 
 ### Subscription Events:
 `_.onSubscribed(func)`: Called on the subscriber element when subscription is added.<br>
@@ -106,3 +127,40 @@ para.effect(() => {
 }, ['%count%']);
 ```
 
+## Conditional Mounting
+This feature allows you to show the element in the DOM only when the condition provided is satisfied.
+
+Continuing with the `para` example.<br>
+Say we want to show the `para` element only when the pseudo-state `count` is odd.<br>
+We'll use the `.putIf` method.<br>
+
+```ts
+// till now
+const para = new TSimp({ type: 'p', parent: '#app' });
+para.subscribe(element, []);
+para.prop = { text: "Element's count is %count%" };
+
+para.effect(() => {
+  console.log('Effect Ran')
+}, ['%count%']);
+
+// conditional mounting
+para.putIf(() => count() % 2 != 0);
+para.make();
+```
+Structure of `putIf`:
+```ts
+.putIf(condition:function:boolean, stick:boolean)
+```
+### Condition as a String
+We can also provide the condition as a string that signifies a boolean expression.
+```ts
+para.putIf(() => count() % 2 != 0);
+```
+Doing this in a "stringy" way:
+```ts
+para.putIf('%count% % 2 != 0')
+```
+### The "stick" parameter:
+There is a second parameter to the `.putIf` method, **"stick : boolean"**, that can be passed to refer if the element after re-mounting will be in its old position or not.<br>
+By default: `false`.
