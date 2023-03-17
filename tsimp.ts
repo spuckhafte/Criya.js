@@ -1,5 +1,12 @@
 import { Attributes, Effects, Events, Init, Prop, States, Subscribers } from "./tsimp.types";
 
+const regex = {
+    stateOperateExp: /{{[a-zA-Z0-9$%+\-*/()\[\]<>?:="'^.! ]+}}/g,
+    stateExp: /\$[a-zA-Z0-9-]+\$/g,
+    pStateExp: /%[a-zA-Z0-9-]+%/g,
+    both: /\$[a-zA-Z0-9-]+\$ | %[a-zA-Z0-9-]+%/g
+}
+
 class TSimp {
 
     /**Initialize the element by defining its type, parent(query-selector), classes and id*/
@@ -42,11 +49,11 @@ class TSimp {
             const classes = this.init.class.split(' ');
             for (let _class of classes) {
                 if (this.domElement.classList.contains(_class)) continue;
-                this.domElement.classList.add(this.stateExtracter(_class));
+                this.domElement.classList.add(this.formatString(_class));
             }
         }
         if (this.init.id) {
-            this.domElement.id = this.stateExtracter(this.init.id);
+            this.domElement.id = this.formatString(this.init.id);
         }
         if (this.events) {
             Object.keys(this.events).forEach(event => {
@@ -59,7 +66,7 @@ class TSimp {
                 // @ts-ignore
                 if (!this.domElement.getAttribute(attr) || this.checkIfIncludesState(this.attr[attr]))
                 // @ts-ignore
-                    this.domElement.setAttribute(attr, this.stateExtracter(this.attr[attr]));
+                    this.domElement.setAttribute(attr, this.formatString(this.attr[attr]));
             });
         }
         if (this.prop) {
@@ -71,13 +78,13 @@ class TSimp {
             if (this.prop.css) {
                 for (let property of Object.keys(this.prop.css)) {
                     //@ts-ignore
-                    this.domElement.style[property] = this.stateExtracter(css[property]);
+                    this.domElement.style[property] = this.formatString(css[property]);
                 }
             }
 
-            if (text) this.domElement.innerText = this.stateExtracter(text);
-            if (html) this.domElement.innerHTML = this.stateExtracter(html);
-            if (value) this.domElement.setAttribute('value', this.stateExtracter(value));
+            if (text) this.domElement.innerText = this.formatString(text);
+            if (html) this.domElement.innerHTML = this.formatString(html);
+            if (value) this.domElement.setAttribute('value', this.formatString(value));
         }
 
         if (this.effects) {
@@ -100,7 +107,10 @@ class TSimp {
                 }
 
                 const anyChange = eff.deps.filter((dep, i) => {
-                    return this.stateExtracter(dep) != eff.currentStates[i];
+                    let currentStateValue:any = eff.currentStates[i];
+                    if (typeof currentStateValue == 'object')
+                        currentStateValue = JSON.stringify(currentStateValue);
+                    return this.formatString(dep) != currentStateValue;
                 }).length != 0;
                 if (anyChange) {
                     if (!eff.onFirst && !eff.ranOnce) return;
@@ -196,14 +206,8 @@ class TSimp {
      * @returns Two functions in an array, one to get state (non reactive) another to set state
     */
     state<T>(stateName:string, initialValue:T):[(() => T), ((newVal: T) => void)] {
-        const isObject = typeof initialValue == 'object';
-        //@ts-ignore
-        if (isObject) initialValue = JSON.stringify(initialValue);
-
-        //@ts-ignore
         this.states[stateName] = initialValue;
-        const setState = (newVal:any) => {
-            if (typeof newVal == 'object') newVal = JSON.stringify(newVal);
+        const setState = (newVal:T) => {
             this.state(stateName, newVal);
             this.make();
             const validSubs = this.subscribers.filter(sub => sub.states.includes(stateName));
@@ -212,11 +216,7 @@ class TSimp {
                 sub.subscriber.render()
             });
         }
-        const stateGetter = () => {
-            // @ts-ignore
-            return isObject ? JSON.parse(this.getState(stateName))
-                : this.getState(stateName);
-        }
+        const stateGetter:(() => T) = () => this.getState(stateName);
         return [stateGetter, setState];
     }
 
@@ -240,7 +240,7 @@ class TSimp {
             dep = dep.replace(/\$|\%/g, '');
             return this.getState(dep) != undefined || this.getPState(dep) != undefined
         });
-        const currentStates = dependencyArray.map(dep => this.stateExtracter(dep));
+        const currentStates = dependencyArray.map(dep => this.formatString(dep));
         this.effects.push({
             func, deps: dependencyArray,
             ranOnce: false, onFirst, currentStates
@@ -257,7 +257,7 @@ class TSimp {
     */
     putIf(condition:((() => boolean)|string), stick=false) {
         if (typeof condition == 'string') {
-            this.renderCondition = () => eval(this.stateExtracter(condition));
+            this.renderCondition = () => eval(this.formatString(condition));
         } else this.renderCondition = condition;
         return this.state('__stick__', stick)
     }
@@ -287,44 +287,64 @@ class TSimp {
     private getPState(stateName:string) {
         return this.pseudoStates[stateName];
     }
+    private formatString(text:string) {
+        if (!checkForOperation(text)) return this.stateExtracter(text);
+
+        const operations = text.match(regex.stateOperateExp);
+        //@ts-ignore - operations is not null, cause we are already checking for it (look up)
+        for (let rawOperation of operations) {
+            let operation = rawOperation.replace(/{{|}}/g, '');
+            operation = this.stateExtracter(operation);
+            let afterOperation:any;
+            try {
+                afterOperation = eval(operation);
+            } catch (e) {
+                console.error(
+                    `[err] Invalid State Operation:\n\n${rawOperation}\n\n${e}\n\nHint: `
+                    + `The state(s) in use << ${operation.match(regex.both)?.map(s => s.trim())} >> might not exist`
+                )
+            }
+
+            if (typeof afterOperation == 'undefined') return text;
+            text = text.replace(rawOperation, afterOperation);
+        }
+        return text;
+    }
     private stateExtracter(text:string) {
-        const regxState = /\$[a-zA-Z0-9-\+\?\:\>\<\=\"\'\[\]\(\)\*\\ ]+\$/g;
-        const stateNames = text.match(regxState);
+        const stateNames = text.match(regex.stateExp);
+        const pseudoStateNames = text.match(regex.pStateExp);
+
         if (stateNames) {
             for (let stateRaw of stateNames) {
-                let state = stateRaw.replace(/[\$\+\?\:\>\<\=0-9\"\'\[\]\(\)\*\\\-]/g, '');
-                state = state.split(' ')[0].trim();
+                const state = stateRaw.replace(/\$/g, '');
                 if (typeof this.states[state] == null) continue;
-                const operatedStateValue = operate(this.states[state], stateRaw, state)
-                text = text.replace(stateRaw, `${operatedStateValue}`);
+                let stateVal = this.getState(state);
+                if (typeof stateVal == 'object')
+                    stateVal = JSON.stringify(stateVal);
+                text = text.replace(stateRaw, `${stateVal}`);
             }
         }
 
-        const regxPseudoState = /\%[a-zA-Z0-9-\+\?\:\>\<\=\"\'\[\]\(\)\*\\ ]+\%/g;
-        const pseudoStateNames = text.match(regxPseudoState);
         if (pseudoStateNames) {
             for (let stateRaw of pseudoStateNames) {
-                let state = stateRaw.replace(/[\%\+\?\:\>\<\=0-9\"\'\[\]\(\)\*\\\-]/g, '');
-                state = state.split(' ')[0].trim();
+                const state = stateRaw.replace(/\%/g, '');
                 if (this.pseudoStates[state] == undefined) continue;
-                const operatedStateValue = operate(this.pseudoStates[state], stateRaw, state);
-                text = text.replace(stateRaw, `${operatedStateValue}`);
+                let stateVal = this.getPState(state);
+                if (typeof stateVal == 'object')
+                    stateVal = JSON.stringify(stateVal);
+                text = text.replace(stateRaw, `${stateVal}`);
             }
         }
 
         return text;
     }
-    private checkIfIncludesState(text:string) {
-        const regx = /\$[a-zA-Z0-9-\+\?\:\>\<\=\"\'\[\]\(\)\*\\ ]+\$/g;
-        const regxP = /\%[a-zA-Z0-9-\+\?\:\>\<\=\"\'\[\]\(\)\*\\ ]+\%/g;
-        return regx.test(text) || regxP.test(text);
-    }
 }
+
 const subscribe = TSimp.subscribe;
-export { TSimp, subscribe };
+
+export { subscribe };
 export default TSimp;
 
-function operate(stateValue:string|boolean|number, rawState:string, stateName:string):string|boolean|number {
-    if (!/[\+\?\:\>\<\=\"\'\[\]\(\)\*\\ ]/g.test(rawState)) return stateValue;
-    return eval(rawState.replace(stateName, `${stateValue}`).replace(/[\%\$]/g, ''));
+function checkForOperation(text:string) {
+    return regex.stateOperateExp.test(text);
 }

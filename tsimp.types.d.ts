@@ -23,7 +23,7 @@ export type Attributes = {
 } | undefined
 
 export type States = {
-    [index:string]: string|number|boolean
+    [index:string]: any
 }
 
 export type ASubscriber<T> = {
