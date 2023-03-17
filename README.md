@@ -66,8 +66,14 @@ button.make();
 ```
 `count()` in the event will always have the latest value of the state as that line of code will call the getter function again.
 
+Or you can use this functional approach to update state:
+```ts
+// prev -> latest value
+setCount(prev => prev + 1)
+``` 
+
 ## - State Operations
-You can perform various operations like arithmetic and reasoning on your states and [pseudo-states](https://github.com/spuckhafte/TSimp#sharing-states)<br>
+You can perform various operations like arithmetic and reasoning on your states and [pseudo-states](https://github.com/spuckhafte/TSimp#--sharing-states)<br>
 Syntax: 
 ```ts
 "Sum of $num1$ and %num2% = {{ $num1$ + %num2% }}"

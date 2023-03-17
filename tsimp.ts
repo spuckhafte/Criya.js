@@ -1,4 +1,4 @@
-import { Attributes, Effects, Events, Init, Prop, States, Subscribers } from "./tsimp.types";
+import { Attributes, Effects, Events, Func, Init, Prop, States, Subscribers } from "./tsimp.types";
 
 const regex = {
     stateOperateExp: /{{[a-zA-Z0-9$%+\-*/()\[\]<>?:="'^.! ]+}}/g,
@@ -205,14 +205,20 @@ class TSimp {
      * @param initialValue - initial value of the state
      * @returns Two functions in an array, one to get state (non reactive) another to set state
     */
-    state<T>(stateName:string, initialValue:T):[(() => T), ((newVal: T) => void)] {
+    state<T>(stateName:string, initialValue:T):[(() => T), ((newVal: T|Func<T, T>) => void)] {
         this.states[stateName] = initialValue;
-        const setState = (newVal:T) => {
-            this.state(stateName, newVal);
+
+        const setState = (newVal:T|Func<T, T>) => {
+            let stateValue:T;
+            //@ts-ignore
+            if (typeof newVal == 'function') stateValue = newVal(this.getState(stateName))
+            else stateValue = newVal;
+
+            this.state(stateName, stateValue);
             this.make();
             const validSubs = this.subscribers.filter(sub => sub.states.includes(stateName));
             validSubs.forEach(sub => {
-                sub.subscriber.pseudoStates[stateName] = newVal;
+                sub.subscriber.pseudoStates[stateName] = stateValue;
                 sub.subscriber.render()
             });
         }
