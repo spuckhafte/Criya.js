@@ -61,11 +61,9 @@ class TSimp {
                 this.domElement.addEventListener(event, this.events[event]);
             });
         }
-        if (this.attr !== undefined) {
+        if (this.attr != undefined) {
             Object.keys(this.attr).forEach(attr => {
-                // @ts-ignore
-                if (!this.domElement.getAttribute(attr) || this.checkIfIncludesState(this.attr[attr]))
-                // @ts-ignore
+                if (this.domElement && this.attr)
                     this.domElement.setAttribute(attr, this.formatString(this.attr[attr]));
             });
         }
