@@ -108,6 +108,8 @@ class TSimp {
                     let currentStateValue:any = eff.currentStates[i];
                     if (typeof currentStateValue == 'object')
                         currentStateValue = JSON.stringify(currentStateValue);
+
+                    eff.currentStates[i] = this.formatString(dep);
                     return this.formatString(dep) != currentStateValue;
                 }).length != 0;
                 if (anyChange) {
@@ -140,7 +142,7 @@ class TSimp {
                 this.state('__position__', Array.from(parent.children).indexOf(this.domElement));
                 this.unMount();
             }
-            return;
+            return this;
         }
         if (this.getState('__stick__')) {
             let position = +this.getState('__position__');
