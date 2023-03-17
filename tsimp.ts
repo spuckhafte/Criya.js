@@ -308,7 +308,7 @@ class TSimp {
             if (typeof afterOperation == 'undefined') return text;
             text = text.replace(rawOperation, afterOperation);
         }
-        return text;
+        return this.stateExtracter(text);
     }
     private stateExtracter(text:string) {
         const stateNames = text.match(regex.stateExp);
