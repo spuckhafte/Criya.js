@@ -5,13 +5,13 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/spuckhafte/JSimp.git"
+    "url": "git+https://github.com/spuckhafte/TSimp.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/spuckhafte/JSimp/issues"
+    "url": "https://github.com/spuckhafte/TSimp/issues"
   },
-  "homepage": "https://github.com/spuckhafte/JSimp#readme"
+  "homepage": "https://github.com/spuckhafte/TSimp#readme"
 }
