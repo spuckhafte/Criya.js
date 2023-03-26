@@ -1,18 +1,17 @@
-# TSimp
-*pronounced as **T Simp**, read as **TS imp***<br>
+# JSimp
+An object oriented, type-safe, frontend javascript library (pronounced: *j-simp*)
 
-Just like [SpuckJs](https://github.com/spuckhafte/spuckjs), but better and typed!
-
-**Description:**
+**Features:**
   1. Object oriented, every TSimp object converts to DOM element
-  2. Autocompletion and JS-Doc documentation included, thnx to Typescript
+  2. Solid TS support, autocompletion and in-editor docs included
   3. State Management
   4. Effect Management
   5. An easy and intuitive way of sharing states
+  6. Conditional Mounting
   
 # DOCS
-You can read [this](https://spuckjs.netlify.app/gettingstarted/) to get an idea of getting started, these are spuckjs docs but both the libraries are very similar.<br>
-You'll be using a build tool and [Vite](https://www.npmjs.com/package/vite) is recomended.
+You can read [this](https://spuckjs.netlify.app/gettingstarted/) to get an idea of getting started, these are spuckjs (an old project of mine) docs but both the libraries are very similar.<br>
+For typescript projects, you'll be using a build tool and [Vite](https://www.npmjs.com/package/vite) is recomended.
 
 ### Initializing:
 ```
