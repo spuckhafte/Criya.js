@@ -1,17 +1,17 @@
 {
-  "name": "tsimp",
-  "version": "1.3.6",
+  "name": "jsimp",
+  "version": "1.3.7",
   "description": "",
   "main": "./dist/index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/spuckhafte/TSimp.git"
+    "url": "git+https://github.com/spuckhafte/JSimp.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/spuckhafte/TSimp/issues"
+    "url": "https://github.com/spuckhafte/JSimp/issues"
   },
-  "homepage": "https://github.com/spuckhafte/TSimp#readme"
+  "homepage": "https://github.com/spuckhafte/JSimp#readme"
 }
