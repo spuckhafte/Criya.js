@@ -1,8 +1,8 @@
-# JSimp
-An object oriented, type-safe, frontend javascript library (pronounced: *j-simp*)
+# Criya
+An object oriented, type-safe, frontend javascript library
 
 **Features:**
-  1. Object oriented, every TSimp object converts to DOM element
+  1. Object oriented, every Criya object converts to DOM element
   2. Solid TS support, autocompletion and in-editor docs included
   3. State Management
   4. Effect Management
@@ -17,13 +17,13 @@ For typescript projects, you'll be using a build tool and [Vite](https://www.npm
 ```
 npm create vite@latest
 npm i
-npm i tsimp
+npm i criya
 ```
 `main.ts`
 ```ts
-import TSimp from 'tsimp';
+import Criya from 'criya';
 
-const element = new TSimp({ type: 'h1', parent: '#app', class: "heading", id: "head" });
+const element = new Criya({ type: 'h1', parent: '#app', class: "heading", id: "head" });
 element.prop = { 
   text: "Hello World",
   css: {
@@ -56,7 +56,7 @@ element.prop = { text: "count is $count$" }
 `setCount` updates the state value.
 
 ```ts
-const button = new TSimp({ type: 'button', parent: '#app' });
+const button = new Criya({ type: 'button', parent: '#app' });
 button.prop = { text: 'Update Count' };
 button.events = {
   click: () => setCount(count() + 1)
@@ -72,7 +72,7 @@ setCount(prev => prev + 1)
 ``` 
 
 ## - State Operations
-You can perform various operations like arithmetic and reasoning on your states and [pseudo-states](https://github.com/spuckhafte/TSimp#--sharing-states)<br>
+You can perform various operations like arithmetic and reasoning on your states and [pseudo-states](https://github.com/spuckhafte/Criya#--sharing-states)<br>
 Syntax: 
 ```ts
 "Sum of $num1$ and %num2% = {{ $num1$ + %num2% }}"
@@ -109,24 +109,24 @@ These operations can be applied in properties where stringy states are valid.<br
 
 ## - Sharing States
 Suppose another element wants to show the count of `element` in its text. For that, it will subscribe for element's state to access them.<br>
-For this we use the static method of the class TSimp, i.e,<br>
+For this we use the static method of the class Criya, i.e,<br>
 `subscribe`.
 ### Note: 
 After subscribing, states are accessible as `pseudo-states` and are refernced like this: `%statename%`
 ```ts
-import TSimp from 'tsimp';
-Tsimp.subscribe();
+import Criya from 'criya';
+Criya.subscribe();
 
 // or
-import TSimp, { subscribe } from 'tsimp';
+import Criya, { subscribe } from 'criya';
 subscribe();
 ```
 
 ```ts
 //top-level
-import TSimp, { subscribe } from 'tsimp';
+import Criya, { subscribe } from 'criya';
 
-const para = new TSimp({ type: 'p', parent: '#app' });
+const para = new Criya({ type: 'p', parent: '#app' });
 subscribe(para, element, []);
 para.prop = { text: "Element's count is %count%" };
 para.make();
@@ -185,7 +185,7 @@ We'll use the `.putIf` method.<br>
 
 ```ts
 // till now
-const para = new TSimp({ type: 'p', parent: '#app' });
+const para = new Criya({ type: 'p', parent: '#app' });
 para.subscribe(element, []);
 para.prop = { text: "Element's count is %count%" };
 
