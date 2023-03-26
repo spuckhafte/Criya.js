@@ -91,15 +91,19 @@ class TSimp {
 
                 if (eff.deps[0] == 'f') {
                     if (!eff.ranOnce) {
-                        eff.func();
+                        eff.ranOnce = true;
                         delete effects[i];
+                        eff.func();  
                     }
                     return;
                 }
                 if (eff.deps[0] == 'e') {
                     let ranOnce = eff.ranOnce;
                     eff.ranOnce = true;
-                    if (!eff.onFirst && !ranOnce) return;
+                    if (!eff.onFirst && !ranOnce) {
+                        eff.ranOnce = true;
+                        return;
+                    }
                     eff.func();
                     return;
                 }
@@ -113,13 +117,17 @@ class TSimp {
                     return this.formatString(dep) != currentStateValue;
                 }).length != 0;
                 if (anyChange) {
-                    if (!eff.onFirst && !eff.ranOnce) return;
+                    if (!eff.onFirst && !eff.ranOnce) {
+                        eff.ranOnce = true;
+                        return;
+                    }
                     eff.func();
                 } else {
-                    if (eff.onFirst && !eff.ranOnce) eff.func();
+                    if (eff.onFirst && !eff.ranOnce) {
+                        eff.ranOnce = true;
+                        eff.func();
+                    }
                 }
-
-                eff.ranOnce = true;
             });
         }
     }
