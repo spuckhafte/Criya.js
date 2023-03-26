@@ -1,4 +1,4 @@
-# Criya
+# Criya.js
 An object oriented, type-safe, frontend javascript library
 
 **Features:**
