@@ -1,11 +1,11 @@
 {
   "name": "criya",
-  "version": "1.3.8",
+  "version": "1.3.9",
   "description": "",
   "main": "./dist/index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/spuckhafte/criyan.js.git"
+    "url": "git+https://github.com/spuckhafte/criya.js.git"
   },
   "keywords": [],
   "author": "",
