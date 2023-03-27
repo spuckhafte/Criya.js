@@ -1,4 +1,4 @@
-import { Attributes, Effects, Events, Func, Init, Prop, States, Subscribers } from "./tsimp.types";
+import { Attributes, Effects, Events, Func, Init, Prop, States, Subscribers } from "../types";
 
 const regex = {
     stateOperateExp: /{{[a-zA-Z0-9$%+\-*/()\[\]<>?:="'^.! ]+}}/g,
@@ -7,7 +7,7 @@ const regex = {
     both: /\$[a-zA-Z0-9-]+\$ | %[a-zA-Z0-9-]+%/g
 }
 
-class TSimp {
+class Criya {
 
     /**Initialize the element by defining its type, parent(query-selector), classes and id*/
     init:Init; 
@@ -22,7 +22,7 @@ class TSimp {
     /**The state object, contains all the states and their current values */
     states:States; pseudoStates:States; 
     /**List of all the subscribers and the states they are subscribed to */
-    subscribers:Subscribers<TSimp>;
+    subscribers:Subscribers<Criya>;
     
     private onmount:CallableFunction|undefined; private onunmount:CallableFunction|undefined;
     private onsubscribed: CallableFunction|undefined; private onnewsubscriber: CallableFunction|undefined;
@@ -195,7 +195,7 @@ class TSimp {
      * @param main - the element that'll share its states.
      * @param forStates - States of the `main` element to be shared, leave the array empty to trigger all.
     */
-    static subscribe(subscriber:TSimp, main:TSimp, forStates:string[]) {
+    static subscribe(subscriber:Criya, main:Criya, forStates:string[]) {
         forStates = forStates.length == 0
             ? Object.keys(main.states)
             : forStates.filter(state => main.states[state] != undefined);
@@ -354,10 +354,10 @@ class TSimp {
     }
 }
 
-const subscribe = TSimp.subscribe;
+const subscribe = Criya.subscribe;
 
 export { subscribe };
-export default TSimp;
+export default Criya;
 
 function checkForOperation(text:string) {
     return regex.stateOperateExp.test(text);
