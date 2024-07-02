@@ -10,7 +10,7 @@ An object oriented, type-safe, frontend javascript library
   6. Conditional Mounting
   
 # DOCS
-You can read [this](https://spuckjs.netlify.app/gettingstarted/) to get an idea of getting started, these are spuckjs (an old project of mine) docs but both the libraries are very similar.<br>
+You can read [this](https://spuckjs.netlify.app/gettingstarted/) to get an idea of getting started, these are spuckjs (an old project of mine) docs but this specific link pretty much works for Criya too.<br>
 For typescript projects, you'll be using a build tool and [Vite](https://www.npmjs.com/package/vite) is recomended.
 
 ### Initializing:
@@ -23,23 +23,29 @@ npm i criya
 ```ts
 import Criya from 'criya';
 
-const element = new Criya({ type: 'h1', parent: '#app', class: "heading", id: "head" });
-element.prop = { 
+const ely = new Criya({
+  type: 'h1',
+  parent: '#app',
+  class: "heading",
+  id: "head"
+});
+ely.prop = { 
   text: "Hello World",
   css: {
     color: "blue"
   }
 };
-element.attr = { title: "Heading" };
-element.make();
+ely.attr = { title: "Heading" };
+ely.make();
 ```
 
 # DOM Methods
-Library gives some methods to manipulate and listen to the dom.<br>
-`render()`: converts/update a virtual element (JSimp object) into a physical DOM element.<br>
+Criya provides you with some basic but useful methods to manipulate and listen to the dom.<br>
+`render()`: converts/update a virtual element (Criya object) into a physical DOM element.<br>
 `mount()` : puts the element to the dom.<br>
 `unMount()`: removes the element from the dom.<br>
 `isMount()`: checks if the element is in the dom.<br>
+*---above methods can be looked up in the prev doc link provided (these are similar to SpuckJs')---*<br>
 `onMount(func)`: calls the `func` function when an element is mounted.<br>
 `onUnmount(func)`: *...element is unmounted*.<br>
 
@@ -48,11 +54,11 @@ States are internal variables of elements that when change automatically update 
 `html, text, css, value, class, id`.
 
 ```ts
-const [count, setCount] = element.state('count', 0);
-element.prop = { text: "count is $count$" }
+const [count, setCount] = ely.state('count', 0);
+ely.prop = { text: "count is $count$" }
 ```
 `$statename$` - This textual way of referencing states is used in the mentioned 6 properties to get a truly reactive nature.<br>
-`count` is a function that returns the state value and can be used inside effects and events to get the latest value of thr state.
+`count` is a function that returns the state value and can be used in code pieces that will re-run to get the latest state value (*viz.* effects, events, conditional mount). Basically its a normal getter function which fetches the current state value everytime its called, nothing magical.<br>
 `setCount` updates the state value.
 
 ```ts
@@ -63,9 +69,9 @@ button.events = {
 }
 button.make();
 ```
-`count()` in the event will always have the latest value of the state as that line of code will call the getter function again.
+`count()` inside the event (click) will always have the latest value of the state (in order to update it: `+1`).
 
-Or you can use this functional approach to update state:
+Or you can use this functional approach to update states:
 ```ts
 // prev -> latest value
 setCount(prev => prev + 1)
@@ -81,7 +87,7 @@ All the expressions are defined inside `{{ ... }}`.<br>
 Basically you can write any valid js inside these brackets.<br>
 ```ts
 text: "{{ console.log('hello') }}"
-// In DOM: "{{ console.log('hello') }}", and will log 'hello'.
+// In DOM: "{{ console.log('hello') }}", and will also log 'hello'.
 
 // count = 5
 text: "{{ console.log($count$) }}"
@@ -90,26 +96,27 @@ text: "{{ console.log($count$) }}"
 text: "console.log($count$)"
 // In DOM: "console.log(5)", no log, cause expressions are executed inside " {{ }} "
 ```
-Some valid examples:
+Some valid/useful examples:
 ```ts
 // js methods
 _.prop = {
-  text: "Answer is: {{ ['first', 'third'].includes('$answer$') }}"
+  text: "Answer is: {{ ['first', 'third'].includes('$answer$') }}" // Answer is true
 }
 // ternary operations
 _.prop = {
-  text: "Count is: {{ $count$ > 5 : 'Big' :'Small' }}"
+  text: "Count is: {{ $count$ > 5 : 'Big' :'Small' }}" // Count is Small
 }
 // arithmetic operations
 _.prop = {
-  text: "Answer = {{ $num1$ + ((%num2% - 3) * 5)/10 }}"
+  text: "Answer = {{ $num1$ + ((%num2% - 3) * 5)/10 }}" // Answer = 96
 }
 ```
 These operations can be applied in properties where stringy states are valid.<br>
 
 ## - Sharing States
-Suppose another element wants to show the count of `element` in its text. For that, it will subscribe for element's state to access them.<br>
-For this we use the static method of the class Criya, i.e,<br>
+Multiple elements can subscribe to a main element for its specific or all states.
+Suppose another element wants to show the count of `ely` in its text. For that, it will subscribe for `ely's` state to access them.<br>
+To achieve this we use the static method of the class Criya, i.e,<br>
 `subscribe`.
 ### Note: 
 After subscribing, states are accessible as `pseudo-states` and are refernced like this: `%statename%`
@@ -127,13 +134,13 @@ subscribe();
 import Criya, { subscribe } from 'criya';
 
 const para = new Criya({ type: 'p', parent: '#app' });
-subscribe(para, element, []);
-para.prop = { text: "Element's count is %count%" };
+subscribe(para, ely, []);
+para.prop = { text: "Ely's count is %count%" };
 para.make();
 ```
 ### Note:
-Whenever the subscribed states change, the subscriber also re-renders with the main element.<br><br>
-Structure of subscribe method:
+Whenever the subscribed states change, the subscribers also re-render with the main element.<br><br>
+Definition of the `subscribe` method:
 ```ts
 subscribe(subscriber, main, forStates);
 /*
@@ -144,8 +151,8 @@ subscribe(subscriber, main, forStates);
 ```
 
 ## - Subscription Events:
-`_.onSubscribed(func)`: Called on the subscriber element when subscription is added.<br>
-`_.onnewSubscriber(func)`: Called on the element to which the subscriber is subscribing when subscription is added.
+`_.onSubscribed(func)`: Called on the subscriber element when subscription is added (`para`)<br>
+`_.onnewSubscriber(func)`: Called on the main element (the one sharing its states) (`ely`)
 
 # Effects:
 Effects are functions that get called when some states or pseudoStates (dependencies) change
@@ -155,16 +162,16 @@ Effects are functions that get called when some states or pseudoStates (dependen
 *@param* `dependencyArray` — add states that will affect the effect, examples:<br>
 ```
 ['$count$', '%color%'] 
-(this will run the effect when either of state/pseudoState changes)
+(this will run the effect when either of the state/pseudoState changes)
 
-['f'] 
-(this will run the effect on the first render only)
-
-['e'] 
-(this will run the effect on every render)
+// Special Deps: 
+ - ['f'] 
+   (this will run the effect on the first render only)
+ - ['e'] 
+   (this will run the effect on every render)
 ```
 
-*@param* `onFirst` — default: true, by default every effect runs on its first render whether the deps change or not.
+*@param* `onFirst` — default: `true`, by default every effect runs on its first render whether the deps change or not.
 ```ts
 element.effect(func, dependencyArray, onFirst=true);
 ```
@@ -186,7 +193,7 @@ We'll use the `.putIf` method.<br>
 ```ts
 // till now
 const para = new Criya({ type: 'p', parent: '#app' });
-para.subscribe(element, []);
+subscribe(para, ely, []);
 para.prop = { text: "Element's count is %count%" };
 
 para.effect(() => {
@@ -199,7 +206,7 @@ para.make();
 ```
 Structure of `putIf`:
 ```ts
-.putIf(condition:function:boolean, stick:boolean)
+.putIf(condition:(() => boolean | string), stick:boolean)
 ```
 ## - Condition as a String
 We can also provide the condition as a string that signifies a boolean expression.
@@ -211,5 +218,5 @@ Doing this in a "stringy" way:
 para.putIf('%count% % 2 != 0')
 ```
 ## - The "stick" parameter:
-There is a second parameter to the `.putIf` method, **"stick : boolean"**, that can be passed to refer if the element after re-mounting will be in its old position or not.<br>
+There is a second parameter to the `.putIf` method, **"stick : boolean"**, this can be used to refer to whether the element, after remounting, will be in its original position or not.<br>
 By default: `false`.
