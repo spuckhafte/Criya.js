@@ -1,4 +1,4 @@
-import { Attributes, Effects, Events, Func, Init, Prop, States, Subscribers } from "../types";
+import { Attributes, Effects, Events, Func, Init, Prop, States, Subscribers, keyOf } from "../types";
 
 const regex = {
     stateOperateExp: /{{[a-zA-Z0-9$%+\-*/()\[\]<>?:="'^.! ]+}}/g,
@@ -24,9 +24,13 @@ class Criya {
     /**List of all the subscribers and the states they are subscribed to */
     subscribers:Subscribers<Criya>;
     
-    private onmount:CallableFunction|undefined; private onunmount:CallableFunction|undefined;
-    private onsubscribed: CallableFunction|undefined; private onnewsubscriber: CallableFunction|undefined;
-    private effects:Effects; private renderCondition:(() => boolean);
+    private onmount:CallableFunction|undefined; 
+    private onunmount:CallableFunction|undefined;
+    private onsubscribed: CallableFunction|undefined; 
+    private onnewsubscriber: CallableFunction|undefined;
+    private effects:Effects; 
+    private renderCondition:(() => boolean);
+    private customRenderDefined:boolean;
 
     constructor(init:Init, prop?:Prop, events?:Events, attr?:Attributes) {
         this.init = init; // { type, parent, class("class1 class2"), id }
@@ -37,7 +41,8 @@ class Criya {
         this.pseudoStates = {}; // --dito--
         this.subscribers = []; // [ { subscriber: El, states: [] } ]
         this.effects = []; // [ { func(), deps[], ranOnce:false, onFirst:boolean, currentStates[] } ]
-        this.renderCondition = () => true; // by default no condition
+        this.renderCondition = () => true; // by default element should be mounted
+        this.customRenderDefined = false; // by default there's no custom render condition defined   
     }
 
     // dom methods:
@@ -57,8 +62,7 @@ class Criya {
         }
         if (this.events) {
             Object.keys(this.events).forEach(event => {
-                // @ts-ignore
-                this.domElement.addEventListener(event, this.events[event]);
+                this.domElement!.addEventListener(event, this.events![event as keyOf<HTMLElementEventMap>]!);
             });
         }
         if (this.attr != undefined) {
@@ -75,7 +79,7 @@ class Criya {
 
             if (this.prop.css) {
                 for (let property of Object.keys(this.prop.css)) {
-                    //@ts-ignore
+                    //@ts-ignore - very annoying maybe insignificant problem: HELP ME!
                     this.domElement.style[property] = this.formatString(css[property]);
                 }
             }
@@ -88,7 +92,7 @@ class Criya {
         if (this.effects) {
             const effects = this.effects;
             effects.forEach((eff, i) => {
-
+                // f: only on first render
                 if (eff.deps[0] == 'f') {
                     if (!eff.ranOnce) {
                         eff.ranOnce = true;
@@ -97,6 +101,8 @@ class Criya {
                     }
                     return;
                 }
+
+                // e: on every render
                 if (eff.deps[0] == 'e') {
                     let ranOnce = eff.ranOnce;
                     eff.ranOnce = true;
@@ -116,6 +122,7 @@ class Criya {
                     eff.currentStates[i] = this.formatString(dep);
                     return this.formatString(dep) != currentStateValue;
                 }).length != 0;
+               
                 if (anyChange) {
                     if (!eff.onFirst && !eff.ranOnce) {
                         eff.ranOnce = true;
@@ -134,13 +141,23 @@ class Criya {
 
     /**Append the element to the DOM */
     mount() {
-        if (this.renderCondition() && this.isMount()) return this;
-
-        if (this.renderCondition()) if (this.onmount) this.onmount();
         let parent = document.querySelector(this.init.parent);
+        if (!parent) 
+            throw Error(`DOMElement of query: ${this.init.parent} doesn't exist :(`);
+        if (!this.domElement) 
+            throw Error('No DOMElement attached :(');
 
-        if (!parent) throw Error(`DOMElement of query: ${this.init.parent} doesn't exist :(`);
-        if (!this.domElement) throw Error('No DOMElement attached :(');
+        if (!this.customRenderDefined) {
+            if (!this.isMount())
+                this._directMount(parent);
+            return this;
+        }
+
+        if (this.renderCondition() && this.isMount()) 
+            return this;
+        
+        if (this.renderCondition() && this.onmount) 
+            this.onmount();
 
         if (typeof this.getState('__position__') !== 'number')
             this.state('__position__', parent.childNodes.length);
@@ -154,8 +171,10 @@ class Criya {
         }
         if (this.getState('__stick__')) {
             let position = +this.getState('__position__');
-            if (position >= parent.childNodes.length) this._directMount(parent);
-            else parent.insertBefore(this.domElement, parent.children.item(position));
+            if (position >= parent.childNodes.length) 
+                this._directMount(parent);
+            else 
+                parent.insertBefore(this.domElement, parent.children.item(position));
         } else this._directMount(parent);
         
         return this;
@@ -165,7 +184,8 @@ class Criya {
     unMount() {
         if (this.onunmount) this.onunmount();
         let parent = document.querySelector(this.init.parent);
-        if (!parent) throw Error(`DOMElement of query: ${this.init.parent} doesn't exist`);
+        if (!parent) 
+            throw Error(`DOMElement of query: ${this.init.parent} doesn't exist`);
 
         if (this.domElement) parent.removeChild(this.domElement);
     }
@@ -177,8 +197,10 @@ class Criya {
     /**Check if this element is in the DOM */
     isMount() {
         let parent = document.querySelector(this.init.parent);
-        if (!parent) throw Error(`DOMElement of query: ${this.init.parent} doesn't exist`);
-        if (!this.domElement) throw Error('No DOMElement attached :(');
+        if (!parent) 
+            throw Error(`DOMElement of query: ${this.init.parent} doesn't exist`);
+        if (!this.domElement) 
+            throw Error('No DOMElement attached :(');
 
         return Array.from(parent.children).indexOf(this.domElement) > -1;
     }
@@ -204,8 +226,11 @@ class Criya {
             subscriber.pseudoStates[state] = main.states[state];
         }
         main.subscribers.push({ subscriber: subscriber, states: forStates });
-        if (main.onnewsubscriber) main.onnewsubscriber();
-        if (subscriber.onsubscribed) subscriber.onsubscribed();
+        
+        if (main.onnewsubscriber) 
+            main.onnewsubscriber();
+        if (subscriber.onsubscribed) 
+            subscriber.onsubscribed();
     }
 
     /**States are internal variables that when change automatically update their special references in some specific properties, i.e., `html, text, css, value, class, id` 
@@ -218,8 +243,9 @@ class Criya {
 
         const setState = (newVal:T|Func<T, T>) => {
             let stateValue:T;
-            //@ts-ignore
-            if (typeof newVal == 'function') stateValue = newVal(this.getState(stateName))
+            if (typeof newVal == 'function') 
+                //@ts-ignore
+                stateValue = newVal(this.getState(stateName))
             else stateValue = newVal;
 
             this.state(stateName, stateValue);
@@ -227,7 +253,11 @@ class Criya {
             const validSubs = this.subscribers.filter(sub => sub.states.includes(stateName));
             validSubs.forEach(sub => {
                 sub.subscriber.pseudoStates[stateName] = stateValue;
-                sub.subscriber.render()
+                sub.subscriber.render();
+                
+                // re-evaluate the mount for the element if a custom render condition is defined
+                if (sub.subscriber.customRenderDefined) 
+                    sub.subscriber.mount();
             });
         }
         const stateGetter:(() => T) = () => this.getState(stateName);
@@ -246,7 +276,11 @@ class Criya {
     effect(func:CallableFunction, dependencyArray:string[], onFirst = true) {
         if (dependencyArray[0] == 'f' || dependencyArray[0] == 'e') {
             this.effects.push({
-                func, deps: dependencyArray, ranOnce: false, onFirst, currentStates: []
+                func, 
+                deps: dependencyArray, 
+                ranOnce: false, 
+                onFirst, 
+                currentStates: []
             });
             return;
         }
@@ -273,7 +307,8 @@ class Criya {
         if (typeof condition == 'string') {
             this.renderCondition = () => eval(this.formatString(condition));
         } else this.renderCondition = condition;
-        return this.state('__stick__', stick)
+        this.customRenderDefined = true;
+        return this.state('__stick__', stick);
     }
 
     // inbuilt events

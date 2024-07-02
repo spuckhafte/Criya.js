@@ -21,6 +21,7 @@ declare class Criya {
     private onnewsubscriber;
     private effects;
     private renderCondition;
+    private customRenderDefined;
     constructor(init: Init, prop?: Prop, events?: Events, attr?: Attributes);
     /**Converts the virtual element into a physical element */
     render(): void;

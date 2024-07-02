@@ -14,7 +14,8 @@ class Criya {
         this.pseudoStates = {}; // --dito--
         this.subscribers = []; // [ { subscriber: El, states: [] } ]
         this.effects = []; // [ { func(), deps[], ranOnce:false, onFirst:boolean, currentStates[] } ]
-        this.renderCondition = () => true; // by default no condition
+        this.renderCondition = () => true; // by default element should be mounted
+        this.customRenderDefined = false; // by default there's no custom render condition defined   
     }
     // dom methods:
     /**Converts the virtual element into a physical element */
@@ -33,7 +34,6 @@ class Criya {
         }
         if (this.events) {
             Object.keys(this.events).forEach(event => {
-                // @ts-ignore
                 this.domElement.addEventListener(event, this.events[event]);
             });
         }
@@ -50,7 +50,7 @@ class Criya {
             const css = this.prop.css;
             if (this.prop.css) {
                 for (let property of Object.keys(this.prop.css)) {
-                    //@ts-ignore
+                    //@ts-ignore - very annoying maybe insignificant problem: HELP ME!
                     this.domElement.style[property] = this.formatString(css[property]);
                 }
             }
@@ -64,6 +64,7 @@ class Criya {
         if (this.effects) {
             const effects = this.effects;
             effects.forEach((eff, i) => {
+                // f: only on first render
                 if (eff.deps[0] == 'f') {
                     if (!eff.ranOnce) {
                         eff.ranOnce = true;
@@ -72,6 +73,7 @@ class Criya {
                     }
                     return;
                 }
+                // e: on every render
                 if (eff.deps[0] == 'e') {
                     let ranOnce = eff.ranOnce;
                     eff.ranOnce = true;
@@ -107,16 +109,20 @@ class Criya {
     }
     /**Append the element to the DOM */
     mount() {
-        if (this.renderCondition() && this.isMount())
-            return this;
-        if (this.renderCondition())
-            if (this.onmount)
-                this.onmount();
         let parent = document.querySelector(this.init.parent);
         if (!parent)
             throw Error(`DOMElement of query: ${this.init.parent} doesn't exist :(`);
         if (!this.domElement)
             throw Error('No DOMElement attached :(');
+        if (!this.customRenderDefined) {
+            if (!this.isMount())
+                this._directMount(parent);
+            return this;
+        }
+        if (this.renderCondition() && this.isMount())
+            return this;
+        if (this.renderCondition() && this.onmount)
+            this.onmount();
         if (typeof this.getState('__position__') !== 'number')
             this.state('__position__', parent.childNodes.length);
         if (!this.renderCondition()) {
@@ -193,8 +199,8 @@ class Criya {
         this.states[stateName] = initialValue;
         const setState = (newVal) => {
             let stateValue;
-            //@ts-ignore
             if (typeof newVal == 'function')
+                //@ts-ignore
                 stateValue = newVal(this.getState(stateName));
             else
                 stateValue = newVal;
@@ -204,6 +210,9 @@ class Criya {
             validSubs.forEach(sub => {
                 sub.subscriber.pseudoStates[stateName] = stateValue;
                 sub.subscriber.render();
+                // re-evaluate the mount for the element if a custom render condition is defined
+                if (sub.subscriber.customRenderDefined)
+                    sub.subscriber.mount();
             });
         };
         const stateGetter = () => this.getState(stateName);
@@ -221,7 +230,11 @@ class Criya {
     effect(func, dependencyArray, onFirst = true) {
         if (dependencyArray[0] == 'f' || dependencyArray[0] == 'e') {
             this.effects.push({
-                func, deps: dependencyArray, ranOnce: false, onFirst, currentStates: []
+                func,
+                deps: dependencyArray,
+                ranOnce: false,
+                onFirst,
+                currentStates: []
             });
             return;
         }
@@ -249,6 +262,7 @@ class Criya {
         }
         else
             this.renderCondition = condition;
+        this.customRenderDefined = true;
         return this.state('__stick__', stick);
     }
     // inbuilt events

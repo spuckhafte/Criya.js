@@ -44,4 +44,4 @@ export type AnEffect = {
 export type Effects = AnEffect[]
 export type Func<T, K> = (value:T) => K;
 
-type keyOf<T> = keyof T;
+export type keyOf<T> = keyof T;
